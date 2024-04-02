@@ -21,5 +21,11 @@ module.exports = {
             check('username', "user phai dai tu %d den %d ki tu").isLength(option.username),
             check('role', "role khong hop le").isIn(["user", "admin", "publisher"])
         ]
+    },
+    checkStrongPassword: function () {
+        return check("password", util.format("password phai dai it nhat %d ki tu, %d chu in hoa, %d chu thuong,%d so", option.password.minLength, option.password.minSymbols, option.password.minUppercase, option.password.minLowercase, option.password.minNumbers)).isStrongPassword(option.password)
+    },
+    checkIsEmail: function () {
+        return check('email', "email dung dinh dang").isEmail()
     }
 }

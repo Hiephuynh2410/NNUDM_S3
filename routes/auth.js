@@ -44,7 +44,6 @@ router.post('/login', async function (req, res, next) {
         data: result.getJWT()
       }
       );
-    //ResHelper.RenderRes(res, true, result.getJWT());
   }
 });
     
@@ -91,7 +90,7 @@ router.post("/forgotPassword", async function (req, res, next) {
   }
 })
 
-router.post("/ResetPassword/:token", userValidator.checkChain(), async function (req, res, next) {
+router.post("/ResetPassword/:token",  async function (req, res, next) {
   var user = await userModel.findOne({
     resetPasswordToken: req.params.token
   })
@@ -108,6 +107,60 @@ router.post("/ResetPassword/:token", userValidator.checkChain(), async function 
   } else {
     ResHelper.RenderRes(res, false, "URL khong hop le");
   }
+})
+
+router.post("/changePasswordToken",userValidator.checkIsEmail(), async function (req, res, next) {
+  var result = validationResult(req);
+  if (result.errors.length > 0) {
+    ResHelper.RenderRes(res, false, result.errors);
+    return;
+  }
+  var user = await userModel.findOne({
+    email: req.body.email
+  })
+  if (user) {
+    let token = user.genTokenResetPassword();
+    await user.save()
+    try {
+      let url = `http://${config.hostName}/api/v1/auth/ChangePassword/${token}`;
+      let message = `click zo url de reset passs: ${url}`
+      sendmail(message, user.email)
+      ResHelper.RenderRes(res, true, "Thanh cong");
+    } catch (error) {
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExp = undefined;
+      await user.save();
+      ResHelper.RenderRes(res, false, error);
+    }
+  } else {
+    ResHelper.RenderRes(res, false, "email khong ton tai");
+  }
+
+})
+
+router.post("/ChangePassword/:token",checkLogin,userValidator.checkStrongPassword(), async function (req, res, next) {
+  var user = await userModel.findOne({
+    resetPasswordToken: req.params.token
+  })
+  if (user) {
+    var result = validationResult(req);
+    if (result.errors.length > 0) {
+      ResHelper.RenderRes(res, false, result.errors);
+      return;
+    }
+    if (user.resetPasswordExp > Date.now()) {
+      user.password = req.body.password;
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExp = undefined;
+      await user.save();
+      ResHelper.RenderRes(res, true, "Reset thanh cong");
+    } else {
+      ResHelper.RenderRes(res, false, "URL het han");
+    }
+  } else {
+    ResHelper.RenderRes(res, false, "URL khong hop le");
+  }
+
 })
 
 module.exports = router;
